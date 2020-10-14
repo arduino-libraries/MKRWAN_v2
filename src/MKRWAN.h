@@ -229,7 +229,7 @@ typedef enum {
     IN865 = 7,
     US915 = 8,
     RU864 = 9,
-    AU915_TTN = 0x80,
+    AU915_TTN = 0x80 | AU915,
 } _lora_band;
 
 typedef enum {
