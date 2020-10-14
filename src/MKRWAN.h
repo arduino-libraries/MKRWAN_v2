@@ -206,14 +206,14 @@ const T& Max(const T& a, const T& b)
 #endif
 
 #define LORA_NL "\n"
-static const char LORA_OK[] = "OK\r\n";
-static const char LORA_ERROR[] = "ERROR\r\n";
-static const char LORA_ERROR_PARAM[] = "PARAM_ERROR\r\n";
-static const char LORA_ERROR_BUSY[] = "+ERR_BUSY\r";
-static const char LORA_ERROR_OVERFLOW[] = "+ERR_PARAM_OVERFLOW\r";
-static const char LORA_ERROR_NO_NETWORK[] = "+ERR_NO_NETWORK\r";
-static const char LORA_ERROR_RX[] = "+ERR_RX\r";
-static const char LORA_ERROR_UNKNOWN[] = "+ERR_UNKNOWN\r";
+static const char LORA_OK[] = "+OK\r\n";
+static const char LORA_ERROR[] = "+ERROR\r\n";
+static const char LORA_ERROR_PARAM[] = "+PARAM_ERROR\r\n";
+static const char LORA_ERROR_BUSY[] = "+ERR_BUSY\r\n";
+static const char LORA_ERROR_OVERFLOW[] = "+ERR_PARAM_OVERFLOW\r\n";
+static const char LORA_ERROR_NO_NETWORK[] = "+ERR_NO_NETWORK\r\n";
+static const char LORA_ERROR_RX[] = "+ERR_RX\r\n";
+static const char LORA_ERROR_UNKNOWN[] = "+ERR_UNKNOWN\r\n";
 
 static const char ARDUINO_FW_VERSION[] = "ARD-078 1.1.9";
 static const char ARDUINO_FW_IDENTIFIER[] = "ARD-078";
@@ -229,6 +229,7 @@ typedef enum {
     IN865 = 7,
     US915 = 8,
     RU864 = 9,
+    AU915_TTN = 0x80,
 } _lora_band;
 
 typedef enum {
@@ -247,6 +248,8 @@ typedef enum {
     DEV_EUI,
     DEV_ADDR,
     NWKS_KEY,
+    FNWKS_KEY,
+    SNWKS_KEY,
     APPS_KEY,
     NWK_ID,
 } _lora_property;
@@ -319,6 +322,9 @@ public:
     //set(NWK_ID, nwkId);
     set(DEV_ADDR, devAddr);
     set(NWKS_KEY, nwkSKey);
+    // for LoRa 1.0.x devices, this MUST be the same as the NWKS_KEY
+    set(FNWKS_KEY, nwkSKey);
+    set(SNWKS_KEY, nwkSKey);
     set(APPS_KEY, appSKey);
     network_joined = join();
     return (getJoinStatus() == 1);
@@ -760,6 +766,12 @@ private:
             break;
         case NWKS_KEY:
             sendAT(GF("+NWKSKEY="), real_val);
+            break;
+        case FNWKS_KEY:
+            sendAT(GF("+FNWKSKEY="), real_val);
+            break;
+        case SNWKS_KEY:
+            sendAT(GF("+SNWKSKEY="), real_val);
             break;
         case NWK_ID:
             sendAT(GF("+NWKID="), real_val);
