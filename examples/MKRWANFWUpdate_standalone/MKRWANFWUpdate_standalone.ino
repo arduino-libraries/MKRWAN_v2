@@ -14,7 +14,7 @@
 #include "fw.h"
 #include "stm32.h"
 #include "serial_arduino.h"
-#include <MKRWAN.h>
+#include <MKRWAN_v2.h>
 
 /* device globals */
 stm32_t    *stm    = NULL;

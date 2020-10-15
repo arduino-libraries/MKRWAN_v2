@@ -4,7 +4,7 @@
   This example code is in the public domain.
 */
 
-#include <MKRWAN.h>
+#include <MKRWAN_v2.h>
 
 LoRaModem modem;
 

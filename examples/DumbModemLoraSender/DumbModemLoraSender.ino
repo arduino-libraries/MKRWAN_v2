@@ -15,7 +15,7 @@
 
 #include <SPI.h>
 #include <LoRa.h>
-//#include <MKRWAN.h>
+//#include <MKRWAN_v2.h>
 
 int counter = 0;
 
