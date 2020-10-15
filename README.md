@@ -9,6 +9,10 @@ https://www.arduino.cc/en/Reference/MKRWAN
 
 If you are looking for the firmware running on Murata CMWX1ZZABZ-078 module, the complete source code is hosted at https://github.com/arduino/mkrwan1300-fw
 
+This version of the library tracks https://github.com/arduino/mkrwan1300-fw/tree/master-1.3.1 , which is based on almost clean ST sources.
+
+The firmware update sketch should be flashed accordingly to the MKRWAN library version in use.
+
 ## License
 
 Copyright (C) 2017  Arduino AG (http://www.arduino.cc/)
