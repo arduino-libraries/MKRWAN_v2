@@ -215,9 +215,6 @@ static const char LORA_ERROR_NO_NETWORK[] = "+ERR_NO_NETWORK\r\n";
 static const char LORA_ERROR_RX[] = "+ERR_RX\r\n";
 static const char LORA_ERROR_UNKNOWN[] = "+ERR_UNKNOWN\r\n";
 
-static const char ARDUINO_FW_VERSION[] = "ARD-078 1.1.9";
-static const char ARDUINO_FW_IDENTIFIER[] = "ARD-078";
-
 typedef enum {
     AS923 = 0,
     AU915 = 1,
@@ -600,29 +597,6 @@ public:
     return true;
   }
 
-#ifdef SerialLoRa
-  // Sends the modem into dumb mode, so the Semtech chip can be controlled directly
-  // The only way to exit this mode is through a begin()
-  void dumb() {
-	SerialLoRa.end();
-	pinMode(LORA_IRQ_DUMB, OUTPUT);
-	digitalWrite(LORA_IRQ_DUMB, LOW);
-
-	// Hardware reset
-	pinMode(LORA_BOOT0, OUTPUT);
-	digitalWrite(LORA_BOOT0, LOW);
-	pinMode(LORA_RESET, OUTPUT);
-	digitalWrite(LORA_RESET, HIGH);
-	delay(200);
-	digitalWrite(LORA_RESET, LOW);
-	delay(200);
-	digitalWrite(LORA_RESET, HIGH);
-	delay(50);
-
-	// You can now use SPI1 and LORA_IRQ_DUMB as CS to interface with the chip
-  }
-#endif
-
   bool dutyCycle(bool on) {
     sendAT(GF("+DCS="), on);   
     if (waitResponse() != 1) {
@@ -710,10 +684,6 @@ public:
 
 
 private:
-
-  bool isArduinoFW() {
-    return (fw_version.indexOf(ARDUINO_FW_IDENTIFIER) >= 0);
-  }
 
   bool changeMode(_lora_mode mode) {
     sendAT(GF("+NJM="),mode);  
