@@ -781,7 +781,7 @@ private:
     String msg_buf;
     // Convert buff to hex
     for (size_t i=0; i<len; i++) {
-      if (buff[i] < 10) {
+      if (buff[i] < 16) {
         msg_buf += "0";
       }
       msg_buf += String(buff[i], HEX);
