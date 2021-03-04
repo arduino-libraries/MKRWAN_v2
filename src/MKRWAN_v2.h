@@ -164,7 +164,7 @@ private:
 };
 
 #ifndef YIELD
-  #define YIELD() { delay(0); }
+  #define YIELD() { delay(2); }
 #endif
 
 typedef const char* ConstStr;
