@@ -796,7 +796,7 @@ private:
     if (confirmed && rc == 1) {
       // need both OK and shitty confirmation string
       const char* confirmation = "confirmed message transmission";
-      rc = waitResponse(5000, GFP(confirmation));
+      rc = waitResponse(10000, GFP(confirmation));
     }
 
     if (rc == 1) {            ///< OK
