@@ -206,12 +206,12 @@ const T& Max(const T& a, const T& b)
 #endif
 
 #define LORA_NL "\n"
-static const char LORA_OK[] = "+OK\r\n";
-static const char LORA_ERROR[] = "+ERROR\r\n";
-static const char LORA_ERROR_PARAM[] = "+PARAM_ERROR\r\n";
-static const char LORA_ERROR_BUSY[] = "+ERR_BUSY\r\n";
+static const char LORA_OK[] = "OK";
+static const char LORA_ERROR[] = "AT_ERROR";
+static const char LORA_ERROR_PARAM[] = "AT_PARAM_ERROR";
+static const char LORA_ERROR_BUSY[] = "AT_BUSY";
 static const char LORA_ERROR_OVERFLOW[] = "+ERR_PARAM_OVERFLOW\r\n";
-static const char LORA_ERROR_NO_NETWORK[] = "+ERR_NO_NETWORK\r\n";
+static const char LORA_ERROR_NO_NETWORK[] = "JOIN FAILED";
 static const char LORA_ERROR_RX[] = "+ERR_RX\r\n";
 static const char LORA_ERROR_UNKNOWN[] = "+ERR_UNKNOWN\r\n";
 
@@ -243,6 +243,7 @@ typedef enum {
     APP_EUI = 0,
     APP_KEY,
     DEV_EUI,
+    NWK_KEY,
     DEV_ADDR,
     NWKS_KEY,
     FNWKS_KEY,
@@ -257,13 +258,9 @@ typedef enum {
     CLASS_C,
 } _lora_class;
 
-struct fw_version_LoRa_s {
-  String        app_version;
-  String        mac_version;
-};
-
-IPAddress     app_addr;
-IPAddress     mac_addr;
+String     app_version;
+String     mw_lorawan_version;
+String     mw_radio_version;
 
 class LoRaModem : public Stream
 {
@@ -291,17 +288,20 @@ private:
   unsigned long pollInterval;
 
 public:
-  virtual int joinOTAA(const char *appEui, const char *appKey, const char *devEui = NULL) {
+  virtual int joinOTAA(const char *appEui, const char *appKey, const char *nwkKey = NULL, const char *devEui = NULL) {
     YIELD();
     rx.clear();
-    changeMode(OTAA);
     set(APP_EUI, appEui);
     set(APP_KEY, appKey);
+    set(NWK_KEY, appKey);
+    if (nwkKey != NULL) {
+        set(NWK_KEY, nwkKey);
+    }
     if (devEui != NULL) {
         set(DEV_EUI, devEui);
     }
-    network_joined = join();
-    return (getJoinStatus() == 1);
+    network_joined = join(OTAA);
+    return network_joined;
   }
 
   virtual int joinOTAA(String appEui, String appKey) {
@@ -315,7 +315,6 @@ public:
   virtual int joinABP(/*const char* nwkId, */const char * devAddr, const char * nwkSKey, const char * appSKey) {
     YIELD();
     rx.clear();
-    changeMode(ABP);
     //set(NWK_ID, nwkId);
     set(DEV_ADDR, devAddr);
     set(NWKS_KEY, nwkSKey);
@@ -323,8 +322,8 @@ public:
     set(FNWKS_KEY, nwkSKey);
     set(SNWKS_KEY, nwkSKey);
     set(APPS_KEY, appSKey);
-    network_joined = join();
-    return (getJoinStatus() == 1);
+    network_joined = join(ABP);
+    return network_joined;
   }
 
   virtual int joinABP(/*String nwkId, */String devAddr, String nwkSKey, String appSKey) {
@@ -446,6 +445,7 @@ public:
     // populate version field on startup
 
     waitResponse(init_msg);
+
     return true;
   }
 
@@ -459,12 +459,22 @@ public:
 
   bool configureBand(_lora_band band) {
     sendAT(GF("+BAND="), band);
-    if (waitResponse() != 1) {
+    String s;
+    if (waitResponse(s) != 1) {
+        Serial.println(s);
         return false;
     }
-    if (band == EU868) {    
-        return dutyCycle(true);
+
+    // Remove verbosity
+    sendAT(GF("+VL="), 0);
+    if (waitResponse(s) != 1) {
+        Serial.println(s);
+        return false;
     }
+
+    //if (band == EU868) {    
+    //    return dutyCycle(true);
+    //}
   
     return true;
   }
@@ -522,30 +532,35 @@ public:
     return false;
   }
 
-  IPAddress version() {
+  String version() {
 
     // TODO: split firmware version in actual versions
-    String        app_version_str;
-    String        mac_version_str;
-    String        app_num_str;
-    String        mac_num_str;
-
+    String versions[10];
+  
     sendAT(GF("+VER=?"));   
     if (waitResponse(fw_version) == 1) {
-        app_version_str=fw_version.substring(0,fw_version.indexOf('\r'));
-        mac_version_str=fw_version.substring(fw_version.indexOf('\n')+1, fw_version.lastIndexOf('\r', fw_version.indexOf("OK"))); 
+      int i = 0;
+      // Split the string into substrings
+      while (fw_version.length() > 0)
+      {
+        int index = fw_version.indexOf('\n');
+        if (index == -1) // No \n found
+        {
+          versions[i++] = fw_version;
+          break;
+        }
+        else
+        {
+          versions[i++] = fw_version.substring(0, index);
+          fw_version = fw_version.substring(index+1);
+        }
+      }
     }
-    app_num_str=app_version_str.substring(app_version_str.indexOf('=')+2, app_version_str.lastIndexOf('\r'));
-    mac_num_str=mac_version_str.substring(mac_version_str.indexOf('=')+2, mac_version_str.lastIndexOf('\r'));
+    app_version=versions[1].substring(versions[1].indexOf(':')+10, versions[1].lastIndexOf('\n'));
+    mw_lorawan_version=versions[2].substring(versions[2].indexOf(':')+2, versions[2].lastIndexOf('\n'));
+    mw_radio_version=versions[3].substring(versions[3].indexOf(':')+4, versions[3].lastIndexOf('\n'));
 
-    if (app_addr.fromString(app_num_str)){
-      DBG("App num: ", app_addr);
-    }
-    if (mac_addr.fromString(mac_num_str)){
-      DBG("Mac num: ", mac_addr);
-    }
-
-    return app_addr;
+    return app_version;
   }
 
   String deviceEUI() {
@@ -685,20 +700,22 @@ public:
 
 private:
 
-  bool changeMode(_lora_mode mode) {
-    sendAT(GF("+NJM="),mode);  
-    if (waitResponse() != 1) {
+  bool join(_lora_mode mode) {
+    sendAT(GF("+JOIN="), mode);
+    if (waitResponse(1000) != 1) {
       return false;
     }
-    return true;
-  }
 
-  bool join() {
-    sendAT(GF("+JOIN"));
-    if (waitResponse(60000L, "JOINED") != 1) {
+    String data;
+    // really, wait event
+    if (waitResponse(60000L, data) != 1) {
       return false;
     }
-    return true;
+    if (data == "JOINED") {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   bool set(_lora_property prop, const char* value) {
@@ -730,6 +747,9 @@ private:
             break;
         case DEV_EUI:
             sendAT(GF("+DEUI="), real_val);
+            break;
+        case NWK_KEY:
+            sendAT(GF("+NWKKEY="), real_val);
             break;
         case DEV_ADDR:
             sendAT(GF("+DADDR="), real_val);
@@ -787,16 +807,17 @@ private:
       msg_buf += String(buff[i], HEX);
     }
 
-    setCFM(confirmed);
+    sendAT(GF("+SEND="), portToJoin, ":", confirmed, ":", msg_buf);
 
-    sendAT(GF("+SENDB="), portToJoin, ":", msg_buf);
-
-    int8_t rc = waitResponse( GFP(LORA_OK), GFP(LORA_ERROR), GFP(LORA_ERROR_PARAM), GFP(LORA_ERROR_BUSY), GFP(LORA_ERROR_OVERFLOW), GFP(LORA_ERROR_NO_NETWORK), GFP(LORA_ERROR_RX), GFP(LORA_ERROR_UNKNOWN) );
+    int8_t rc = waitResponse();
 
     if (confirmed && rc == 1) {
       // need both OK and shitty confirmation string
-      const char* confirmation = "confirmed message transmission";
-      rc = waitResponse(5000, GFP(confirmation));
+      String confirmation;
+      rc = waitResponse(5000);
+      if (confirmation == "SEND_CONFIRMED") {
+        rc = 1;
+      }
     }
 
     if (rc == 1) {            ///< OK
@@ -928,14 +949,24 @@ private:
           index = 8;
           goto finish;
         } else if (data.endsWith("+EVT:")) {
-          data = "";
-          int port = stream.readStringUntil(':').toInt();
+          // could be:
+          // SEND_CONFIRMED
+          // RX_1
+          // JOIN FAILED
+          // JOINED
           data = stream.readStringUntil('\r');
+          if (data.indexOf(':') == -1) {
+            data.trim();
+            index = 1;
+            goto finish;
+          }
+          Serial.println("got RX");
+          Serial.println(data);
+          int port = data.substring(0, data.indexOf(':')).toInt();
+          data = data.substring(data.indexOf(':')+4, data.length());
           for (size_t i=0; i<data.length(); i+=2) {
             rx.put(toHex(&(data.c_str()[i])));
           }
-          // consume buffer; contains band and power info
-          data = stream.readStringUntil('\r');
         }
       }
     } while (millis() - startMillis < timeout);
